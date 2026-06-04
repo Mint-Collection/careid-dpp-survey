@@ -2301,7 +2301,95 @@ function buildSummary(){
   document.getElementById('summary-content').innerHTML=html;
 }
 
+// ===== Google 스프레드시트 저장 엔드포인트 (Apps Script 웹앱 URL) =====
+// 배포 후 받은 URL을 아래 따옴표 안에 붙여넣으세요.
+const SHEET_ENDPOINT='https://script.google.com/macros/s/AKfycbw5n7NMGVgYS3e2zpn52pNb-VPKGoZ2cFdqSXdkjmo7TJuLIjwEkVzngerzwWh2LzjK/exec';
+
+// 모든 설문 응답을 평탄한 key-value 객체로 수집
+function collectResponses(){
+  const g=id=>{const el=document.getElementById(id);return el?el.value.trim():''};
+  const data={};
+  const now=new Date();
+  const pad=n=>n.toString().padStart(2,'0');
+  data['제출일시']=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+' '+pad(now.getHours())+':'+pad(now.getMinutes());
+
+  // A. 응답자 정보
+  data['회사명']=g('f-company');
+  data['산업분야']=g('f-industry');
+  const deptRaw=document.getElementById('f-dept').value;
+  const deptOther=g('f-dept-other');
+  data['소속부서']=(deptRaw==='기타'&&deptOther)?'기타('+deptOther+')':deptRaw;
+  data['직급/성명']=g('f-name');
+  data['이메일']=g('f-email');
+  data['연락처']=g('f-phone');
+  data['관여도']=getRadio('involve');
+  const access=[];
+  document.querySelectorAll('#comm-dept-table tbody tr').forEach(tr=>{
+    const cb=tr.querySelector('input[type="checkbox"]');
+    if(cb&&cb.checked){const r=tr.cells[2].querySelector('input[type=radio]:checked');access.push(cb.value+'('+(r?r.value:'미선택')+')')}
+  });
+  data['소통부서']=access.join(', ');
+  data['담당업무']=g('f-task');
+
+  // B1~B5 데이터 영역 (항목별 보유/위치/최신성/공개)
+  const bTitles={b1:'B1제품식별',b2:'B2소재원료',b3:'B3제조공급망',b4:'B4품질인증',b5:'B5환경포장'};
+  ['b1','b2','b3','b4','b5'].forEach(id=>{
+    document.querySelectorAll('#tbl-'+id+' tbody tr').forEach(tr=>{
+      const nm=tr.cells[0].textContent.trim();
+      const key='['+bTitles[id]+'] '+nm;
+      const have=tr.cells[1].querySelector('select').value;
+      if(have==='-'){data[key]='-';return;}
+      const loc=tr.cells[2].querySelector('select').value;
+      const fresh=tr.cells[3].querySelector('select').value;
+      const pub=tr.cells[4].querySelector('select').value;
+      data[key]='보유:'+have+' | 위치:'+loc+' | 최신성:'+fresh+' | 공개:'+pub;
+    });
+  });
+
+  // C~F Likert 상세
+  const lk=(prefix,labels,tag)=>{labels.forEach((label,i)=>{const el=document.querySelector('input[name="'+prefix+(i+1)+'"]:checked');data['['+tag+'] '+label]=el?el.value:''})};
+  lk('gov',['책임담당자명확','변경이력자동기록','최신본식별가능','접근권한통제'],'C거버넌스');
+  data['[D공급망] Tier1협력사수']=getRadio('t1count');
+  lk('sc',['Tier1정보즉시확인','Tier2정보파악','Tier3이상추적','협력사데이터협조'],'D공급망');
+  lk('pr',['시스템자동화비중','표준매뉴얼정착','오류수정프로세스'],'E프로세스');
+  lk('cr',['신규시스템도입경험','임원진규제인식','신규업무수용여력'],'F변화준비');
+  data['[F변화준비] 주당참여시간']=getRadio('time');
+
+  // G 위험 인식 & Quick Win
+  const rk1=document.querySelector('input[name="rk1"]:checked');
+  data['[G위험] 규제미대응영향도']=rk1?rk1.value:'';
+  const riskEl=document.querySelector('input[name="risk"]:checked');
+  data['[G위험] 최대위험영역']=riskEl?riskEl.nextElementSibling.textContent.trim():'';
+  const qwEl=document.querySelector('input[name="qw"]:checked');
+  data['[G위험] QuickWin영역']=qwEl?qwEl.nextElementSibling.textContent.trim():'';
+
+  // H 시스템 환경
+  data['[H시스템] 사용시스템']=getChecked('input[id^="sys"]').join(', ');
+  data['[H시스템] ERP모듈']=g('f-erp');
+  data['[H시스템] PLM기능']=g('f-plm');
+  data['[H시스템] 별도솔루션']=g('f-solution');
+  data['[H시스템] 협조범위']=getRadio('coop');
+  data['[H시스템] 개선필요점']=g('f-pain');
+  data['[H시스템] 기타의견']=g('f-etc');
+
+  return data;
+}
+
 function submitForm(){
+  // 응답 수집 후 Google 스프레드시트로 전송
+  try{
+    const data=collectResponses();
+    if(SHEET_ENDPOINT.indexOf('http')===0){
+      fetch(SHEET_ENDPOINT,{
+        method:'POST',
+        mode:'no-cors',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify(data)
+      }).catch(err=>console.error('스프레드시트 전송 오류:',err));
+    }else{
+      console.warn('SHEET_ENDPOINT가 아직 설정되지 않았습니다. 응답이 전송되지 않습니다.');
+    }
+  }catch(e){console.error('응답 수집 오류:',e)}
   goTo(15);
   showToast('설문이 제출되었습니다.');
 }
