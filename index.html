@@ -2331,12 +2331,9 @@ function collectResponses(){
   data['소통부서']=access.join(', ');
   data['담당업무']=g('f-task');
 
-  // 해당 부서가 보는 섹션만 수집 (relevantKeys 미설정 시 전체 수집)
-  const inc=k=>relevantKeys.size===0||relevantKeys.has(k);
-
-  // B1~B5 데이터 영역 (항목별 보유/위치/최신성/공개)
+  // B1~B5 데이터 영역 — 담당 외 섹션을 입력해도 모두 수집(전체 헤더 사용)
   const bTitles={b1:'B1제품식별',b2:'B2소재원료',b3:'B3제조공급망',b4:'B4품질인증',b5:'B5환경포장'};
-  ['b1','b2','b3','b4','b5'].filter(inc).forEach(id=>{
+  ['b1','b2','b3','b4','b5'].forEach(id=>{
     document.querySelectorAll('#tbl-'+id+' tbody tr').forEach(tr=>{
       const nm=tr.cells[0].textContent.trim();
       const key='['+bTitles[id]+'] '+nm;
@@ -2349,14 +2346,12 @@ function collectResponses(){
     });
   });
 
-  // C~F Likert 상세 (C·D·E는 해당 부서만, F는 공통)
+  // C~F Likert 상세
   const lk=(prefix,labels,tag)=>{labels.forEach((label,i)=>{const el=document.querySelector('input[name="'+prefix+(i+1)+'"]:checked');data['['+tag+'] '+label]=el?el.value+'/5':''})};
-  if(inc('c')) lk('gov',['책임담당자명확','변경이력자동기록','최신본식별가능','접근권한통제'],'C거버넌스');
-  if(inc('d')){
-    data['[D공급망] Tier1협력사수']=getRadio('t1count');
-    lk('sc',['Tier1정보즉시확인','Tier2정보파악','Tier3이상추적','협력사데이터협조'],'D공급망');
-  }
-  if(inc('e')) lk('pr',['시스템자동화비중','표준매뉴얼정착','오류수정프로세스'],'E프로세스');
+  lk('gov',['책임담당자명확','변경이력자동기록','최신본식별가능','접근권한통제'],'C거버넌스');
+  data['[D공급망] Tier1협력사수']=getRadio('t1count');
+  lk('sc',['Tier1정보즉시확인','Tier2정보파악','Tier3이상추적','협력사데이터협조'],'D공급망');
+  lk('pr',['시스템자동화비중','표준매뉴얼정착','오류수정프로세스'],'E프로세스');
   lk('cr',['신규시스템도입경험','임원진규제인식','신규업무수용여력'],'F변화준비');
   data['[F변화준비] 주당참여시간']=getRadio('time');
 
