@@ -2347,7 +2347,7 @@ function collectResponses(){
   });
 
   // C~F Likert 상세
-  const lk=(prefix,labels,tag)=>{labels.forEach((label,i)=>{const el=document.querySelector('input[name="'+prefix+(i+1)+'"]:checked');data['['+tag+'] '+label]=el?el.value:''})};
+  const lk=(prefix,labels,tag)=>{labels.forEach((label,i)=>{const el=document.querySelector('input[name="'+prefix+(i+1)+'"]:checked');data['['+tag+'] '+label]=el?el.value+'/5':''})};
   lk('gov',['책임담당자명확','변경이력자동기록','최신본식별가능','접근권한통제'],'C거버넌스');
   data['[D공급망] Tier1협력사수']=getRadio('t1count');
   lk('sc',['Tier1정보즉시확인','Tier2정보파악','Tier3이상추적','협력사데이터협조'],'D공급망');
@@ -2357,7 +2357,7 @@ function collectResponses(){
 
   // G 위험 인식 & Quick Win
   const rk1=document.querySelector('input[name="rk1"]:checked');
-  data['[G위험] 규제미대응영향도']=rk1?rk1.value:'';
+  data['[G위험] 규제미대응영향도']=rk1?rk1.value+'/5':'';
   const riskEl=document.querySelector('input[name="risk"]:checked');
   data['[G위험] 최대위험영역']=riskEl?riskEl.nextElementSibling.textContent.trim():'';
   const qwEl=document.querySelector('input[name="qw"]:checked');
